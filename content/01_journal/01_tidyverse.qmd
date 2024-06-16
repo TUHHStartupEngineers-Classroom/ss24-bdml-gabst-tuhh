@@ -1,6 +1,6 @@
 ---
-title: "Tidyverse"
-author: "Joschka Schwarz"
+title: "ML Fundamentals"
+author: "Gabriel Storch"
 ---
 
 ::: callout-note
