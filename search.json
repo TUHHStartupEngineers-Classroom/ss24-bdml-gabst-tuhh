@@ -100,9 +100,9 @@
   {
     "objectID": "content/01_journal/03_Automated_ML.html",
     "href": "content/01_journal/03_Automated_ML.html",
-    "title": "Data Wrangling",
+    "title": "Automated ML",
     "section": "",
-    "text": "Note\n\n\n\nYou can delete everything in here and start fresh."
+    "text": "library(tidyverse)\nlibrary(GGally)\nlibrary(h2o)\nlibrary(rsample)\nlibrary(cowplot)\nlibrary(glue)\n\nReading data for analysis\n\nemployee_attrition_tbl &lt;- read_csv(\"C:/Projekte/bdml/employee_data.csv\")\n\n#&gt; Rows: 1470 Columns: 35\n#&gt; ── Column specification ────────────────────────────────────────────────────────\n#&gt; Delimiter: \",\"\n#&gt; chr  (9): Attrition, BusinessTravel, Department, EducationField, Gender, Job...\n#&gt; dbl (26): Age, DailyRate, DistanceFromHome, Education, EmployeeCount, Employ...\n#&gt; \n#&gt; ℹ Use `spec()` to retrieve the full column specification for this data.\n#&gt; ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.\n\n\n\nemployee_attrition_tbl %&gt;%\n    select(Attrition, MonthlyIncome, PercentSalaryHike, StockOptionLevel, EnvironmentSatisfaction, WorkLifeBalance, JobInvolvement, OverTime, TrainingTimesLastYear, YearsAtCompany, YearsSinceLastPromotion) %&gt;%\n    ggpairs(aes(color = Attrition), lower = \"blank\", legend = 1,\n            diag  = list(continuous = wrap(\"densityDiag\", alpha = 0.5))) +\n    theme(legend.position = \"bottom\")\n\n\n\n\n\n\n\n\nI present the asnwers by Number. Answer\n1.Those that are leaving have a lower Monthly Income.\n\nIt’s difficult to deduce anything based on the visualization.\nThose that are staying have a higher stock option level. This is not true for the highest stock option level tho.\nA higher proportion of those leaving have a low environment satisfaction level\nThose that are staying have a higher density of 2’s and 3’s\nThose that are leaving have a lower density of 3’s and 4’s\nThe proportion of those leaving that are working Over Time are high compared to those that are not leaving. (roughly 50% of those who are leaving are doing OT, vs ~25% for stayers)\nIt’s difficult to deduce anything based on the visualization.\nPeople that leave tend to have less working years at the company\nIt’s difficult to deduce anything based on the visualization"
   },
   {
     "objectID": "content/01_journal/02_Supervised.html",
@@ -114,8 +114,29 @@
   {
     "objectID": "content/01_journal/04_performance.html",
     "href": "content/01_journal/04_performance.html",
-    "title": "Data Visualization",
+    "title": "Performance Measures",
     "section": "",
-    "text": "Note\n\n\n\nYou can delete everything in here and start fresh."
+    "text": "See Automated ML"
+  },
+  {
+    "objectID": "content/01_journal/03_Automated_ML.html#grid-search-tuning",
+    "href": "content/01_journal/03_Automated_ML.html#grid-search-tuning",
+    "title": "Automated ML",
+    "section": "3.1 Grid Search Tuning",
+    "text": "3.1 Grid Search Tuning\nMaybe I can squeeze half a percent more out of my best GBM (stackedensemble cant be used in grid search in h2o):\n\nmodel &lt;- h2o.getModel(\"GBM_grid_1_AutoML_14_20240620_131005_model_20\")\nh2o.performance(model, test_h2o)"
+  },
+  {
+    "objectID": "content/01_journal/03_Automated_ML.html#grid-search",
+    "href": "content/01_journal/03_Automated_ML.html#grid-search",
+    "title": "Automated ML",
+    "section": "3.2 grid search",
+    "text": "3.2 grid search\n\nensemble_grid &lt;- h2o.grid(algorithm = \"gbm\",\n                          grid_id = \"gbmgrid\",\n                          x=predictors, y = response, training_frame = train_h2o, validation_frame = valid_h2o, nfolds = 5,\n                          hyper_params = list(ntrees = list(50, 100, 125, 200),\n                                              max_depth = list(8, 10, 15, 20),\n                                              min_rows = list(2, 5, 10, 20),\n                                              sample_rate= list(0.5, 0.75)\n                            )\n                          )\n \n \n#max_depth min_rows ntrees sample_rate model_ids logloss\n#&lt;chr&gt;    &lt;chr&gt;  &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;\n#228    20.00000    2.00000 125.00000   0.75000 gbmgrid_model_221   0.31673\n#229    15.00000    2.00000 200.00000   0.50000 gbmgrid_model_172   0.31903\n#230    20.00000    5.00000 200.00000   0.75000 gbmgrid_model_241   0.32009\n#231    15.00000    2.00000 200.00000   0.75000 gbmgrid_model_236   0.35177\n#232    20.00000    2.00000 200.00000   0.50000 gbmgrid_model_173   0.40970\n#233    20.00000    2.00000 200.00000   0.75000 gbmgrid_model_237   0.44275\n\nLooks like the model automl returned was already achieving better log loss than my tuning attempt."
+  },
+  {
+    "objectID": "content/01_journal/03_Automated_ML.html#roc-plot-precision-recall-plot",
+    "href": "content/01_journal/03_Automated_ML.html#roc-plot-precision-recall-plot",
+    "title": "Automated ML",
+    "section": "3.3 roc plot, precision + recall plot",
+    "text": "3.3 roc plot, precision + recall plot\ndefining functions for everything..\n\nplot_roc &lt;- function(model_metrics_tbl, order_by, size = 1.5) {\n  order_by_expr &lt;- rlang::sym(order_by)\n  model_metrics_tbl %&gt;%\n        ggplot(aes(fpr, tpr, color = model_id, linetype = !! order_by_expr)) +\n        geom_line(size = size) +\n        labs(title = \"ROC\", x = \"FPR\", y = \"TPR\") +\n        theme(legend.direction = \"vertical\") \n}\n\nplot_prec_rec &lt;- function(model_metrics_tbl, order_by, size = 1.5) {\n    order_by_expr &lt;- rlang::sym(order_by)\n  model_metrics_tbl %&gt;%\n        ggplot(aes(recall, precision, color = model_id, linetype = !! order_by_expr)) +\n        geom_line(size = size) +\n        labs(title = \"Precision Vs Recall\", x = \"Recall\", y = \"Precision\") +\n        theme(legend.position = \"none\") \n}\n\nplot_gain &lt;- function(gain_lift_tbl, order_by, size = 1.5) {\n    order_by_expr &lt;- rlang::sym(order_by)\n    gain_lift_tbl %&gt;%\n        ggplot(aes(cumulative_data_fraction, gain, \n                          color = model_id, linetype = !! order_by_expr)) +\n        geom_line(size = size,) +\n        geom_segment(x = 0, y = 0, xend = 1, yend = 1, \n                     color = \"red\", size = size, linetype = \"dotted\") +\n        expand_limits(x = c(0, 1), y = c(0, 1)) +\n        labs(title = \"Gain\",\n             x = \"Cumulative Data Fraction\", y = \"Gain\") +\n        theme(legend.position = \"none\")\n}\n\nplot_lift &lt;- function(gain_lift_tbl, order_by, size = 1.5) {\n      order_by_expr &lt;- rlang::sym(order_by)\n    gain_lift_tbl %&gt;%\n        ggplot(aes(cumulative_data_fraction, lift, \n                          color = model_id, linetype = !! order_by_expr)) +\n        geom_line(size = size) +\n        geom_segment(x = 0, y = 1, xend = 1, yend = 1, \n                     color = \"red\", size = size, linetype = \"dotted\") +\n        expand_limits(x = c(0, 1), y = c(0, 1)) +\n        labs(title = \"Lift\",\n             x = \"Cumulative Data Fraction\", y = \"Lift\") +\n        theme(legend.position = \"none\") \n    \n}\nget_model_metrics &lt;- function(leaderboard_tbl, order_by,  test_tbl = test_tbl) {\n  order_by_expr &lt;- rlang::sym(order_by)\n  n &lt;- nrow(leaderboard_tbl)\n  metrics_list &lt;- list()\n  \n  for (i in 1:n) {\n    model_id &lt;- leaderboard_tbl$model_id[i]\n    model_metrics &lt;- get_model_performance_metrics(model_id, test_tbl)\n    metrics_list[[i]] &lt;- model_metrics\n  }\n  \n  leaderboard_tbl$metrics &lt;- metrics_list\n  unnest(leaderboard_tbl, cols = metrics) %&gt;%\n    mutate(\n      model_id = as_factor(model_id) %&gt;% \n                  fct_reorder(!! order_by_expr, .desc = ifelse(order_by == \"auc\", TRUE, FALSE)),\n      auc      = auc %&gt;% \n                  round(3) %&gt;% \n                  as.character() %&gt;% \n                  as_factor() %&gt;% \n                  fct_reorder(as.numeric(model_id)),\n      logloss  = logloss %&gt;% \n                  round(4) %&gt;% \n                  as.character() %&gt;% \n                  as_factor() %&gt;% \n                  fct_reorder(as.numeric(model_id))\n    )\n}\n\nget_model_performance_metrics &lt;- function(model_id, test_tbl) {\n    model_h2o &lt;- h2o.getModel(model_id)\n  tst_h2o &lt;- as.h2o(test_tbl)\n  perf_h2o &lt;- h2o.performance(model_h2o, newdata = tst_h2o)\n  \n  metrics_df &lt;- perf_h2o %&gt;% h2o.metric() %&gt;% as_tibble() %&gt;%\n    select(threshold, tpr, fpr, precision, recall)\n  \n  return(metrics_df)\n}"
   }
 ]
