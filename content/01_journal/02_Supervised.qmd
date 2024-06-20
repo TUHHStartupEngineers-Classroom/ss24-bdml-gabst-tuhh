@@ -174,5 +174,5 @@ suppressWarnings(
 
 ```
 
-Seems like GLM net produces the lowest errors.
+Seems like lm produces the lowest rmse.
 
