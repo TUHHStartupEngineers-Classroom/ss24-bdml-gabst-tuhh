@@ -219,12 +219,11 @@ ensemble_grid <- h2o.grid(algorithm = "gbm",
  
 #max_depth min_rows ntrees sample_rate model_ids logloss
 #<chr>    <chr>  <chr> <chr> <chr> <chr>
-#228	20.00000	2.00000	125.00000	0.75000	gbmgrid_model_221	0.31673
-#229	15.00000	2.00000	200.00000	0.50000	gbmgrid_model_172	0.31903
-#230	20.00000	5.00000	200.00000	0.75000	gbmgrid_model_241	0.32009
-#231	15.00000	2.00000	200.00000	0.75000	gbmgrid_model_236	0.35177
-#232	20.00000	2.00000	200.00000	0.50000	gbmgrid_model_173	0.40970
-#233	20.00000	2.00000	200.00000	0.75000	gbmgrid_model_237	0.44275
+#1	10.00000	20.00000	50.00000	0.50000	gbmgrid_model_116	0.17354
+#2	8.00000	20.00000	100.00000	0.75000	gbmgrid_model_214	0.17366
+#3	10.00000	20.00000	100.00000	0.75000	gbmgrid_model_215	0.17385
+#4	10.00000	10.00000	50.00000	0.50000	gbmgrid_model_113	0.17431
+#5	8.00000	20.00000	100.00000	0.50000	gbmgrid_model_127	0.17467
 ```
 Looks like the model automl returned was already achieving better log loss than my tuning attempt.
 
