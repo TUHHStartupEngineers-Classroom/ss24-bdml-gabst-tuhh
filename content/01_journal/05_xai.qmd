@@ -126,11 +126,30 @@ explanation <- test_tbl %>%
 
 write_csv(explanation, "explanation.csv")
 
+
+explanation <- test_tbl %>%
+    slice(1:20) %>%
+    select(-Attrition) %>%
+    lime::explain(
+    
+        # Pass our explainer object
+        explainer = explainer,
+        # Because it is a binary classification model: 1
+        n_labels   = 1,
+        # number of features to be returned
+        n_features = 8,
+        # number of localized linear models
+        n_permutations = 5000,
+        # Let's start with 1
+        kernel_width   = 1
+    )
+
+write_csv(explanation, "explanation20.csv")
 ```
 
 ```{r}
 explanation <- read.csv("explanation.csv")
-
+explanation20 <- read.csv("explanation20.csv")
 ```
 
 
@@ -170,18 +189,18 @@ plot_explanations <- function(explanations) {
     scale_fill_gradient2(low = "red", high = "green", mid = "white", midpoint = 0) +
     labs(title = "Feature Importance by Case",
          x = "Case",
-         y = "Feature = Value") +
-    theme_minimal() +
-    theme(
-      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-      panel.spacing = unit(1, "lines")
-    )
+         y = "Feature ") +
+    theme_minimal() 
+    #theme(
+    #  axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    #  panel.spacing = unit(1, "lines")
+    #)
 }
 ```
 
 ```{r}
-?lime::plot_explanations
-explanation %>%
+
+explanation20 %>%
     plot_explanations()
 ```
 
