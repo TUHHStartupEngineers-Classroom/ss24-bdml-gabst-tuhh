@@ -1,8 +1,180 @@
 ---
-title: "Data Acquisition"
-author: "Joschka Schwarz"
+title: "Supervised Machine Learning"
+date: "06/16/2024"
+author: "Gabriel Storch"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        highlight: tango
+        code_folding: hide
+        df_print: paged
+editor: 
+  markdown: 
+    wrap: 72
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+```{r}
+# Standard
+library(tidyverse)
+
+# Modeling
+library(parsnip)
+
+# Preprocessing & Sampling
+library(recipes)
+library(rsample)
+
+# Modeling Error Metrics
+library(yardstick)
+
+# Plotting Decision Trees
+library(rpart.plot)
+library(workflows)
+library(parsnip)
+```
+
+
+```{r}
+bike_features_tbl <- readRDS("C:/Projekte/bdml/bike_features_tbl.rds") %>% select(model:url)
+split_obj <- initial_split(bike_features_tbl, prop = 0.8, strata="category_2") 
+
+
+train_tbl <- training(split_obj)
+test_tbl <- testing(split_obj)
+
+train_tbl <- train_tbl %>% set_names(str_replace_all(names(train_tbl), " |-", "_"))
+test_tbl  <- test_tbl  %>% set_names(str_replace_all(names(test_tbl),  " |-", "_"))
+
+```
+# Problem definition
+
+Which Bike Categories are in high demand?
+Which Bike Categories are under represented?
+# Goal
+
+Use a pricing algorithm to determine a new product price in a category gap
+
+
+I. Build a model
+```{r}
+LM <- linear_reg() %>%
+  set_engine("lm")
+```
+
+II. Create features with the recipes package
+```{r}
+
+
+recipe_obj <- recipe(price ~ ., data = train_tbl) %>% 
+                step_rm(url) %>% 
+                step_dummy(all_nominal(), one_hot = TRUE ) %>%
+  step_scale(all_numeric(), -all_outcomes())
+  
+
+```
+
+
+
+III. Bundle the model and recipe with the workflow package
+```{r}
+wf <- workflow() %>%
+   # Add the recipe to the workflow
+  add_recipe(recipe_obj) %>% 
+  # add model
+  add_model(LM) %>%
+  # train model
+  fit(data = train_tbl)
+
+```
+
+
+IV. Evaluate your model with the yardstick package
+```{r}
+count <- 0
+calc_metrics <- function(model, model_type = count, new_data = test_tbl) {
+    count <- count + 1
+
+    res <- model %>%
+        predict(new_data = new_data) %>%
+
+        bind_cols(new_data %>% select(price)) %>%
+        yardstick::metrics(truth = price, estimate = .pred) 
+
+    res <- res %>% mutate(.estimator = model_type)
+
+  
+    return (res)
+
+}
+calc_metrics(wf, new_data = test_tbl)
+
+```
+
+V. Comparing two models in the pipeline:
+make pipeline into function:
+
+```{r}
+run_complete_pipe <- function(model, model_type,  recipe = recipe_obj, train_data = train_tbl, test_data = test_tbl) {
+  wf <- workflow() %>%
+   # Add the recipe to the workflow
+  add_recipe(recipe) %>% 
+  # add model
+  add_model(model) %>%
+  # train model
+  fit(data = train_data)
+  # evaluate model
+  metrics <- calc_metrics(wf, model_type,  test_data)
+  return (metrics)
+}
+```
+make for loop wrapper for pipe function:
+```{r}
+compare_results <- function(models) {
+  results <- list()
+for (mod in models) {
+  results[[length(results) + 1]] <- run_complete_pipe(mod, mod$engine, recipe_obj, train_tbl, test_tbl)
+}
+
+results_combined <- bind_rows(
+  map_dfr(results, ~ {
+    tibble(
+      model_type = .x$.estimator,
+      rmse = filter(.x, .metric == "rmse")$.estimate[1],
+      rsq = filter(.x, .metric == "rsq")$.estimate[1],
+      mae = filter(.x, .metric == "mae")$.estimate[1]
+    )
+  })
+) %>%
+  distinct()
+
+results_combined
+}
+```
+
+Define some models and run the comparison
+```{r}
+XGBOOST <-  boost_tree(
+  mode = "regression",
+  trees = 200,         
+  learn_rate = 0.01,
+  loss_reduction = 0.01
+) %>%
+  set_engine("xgboost")
+
+GLMNET <- linear_reg(mode  = "regression", 
+                     penalty = 10, 
+                     mixture = 0.1) %>%
+                     set_engine("glmnet")
+
+models <- list(LM, XGBOOST, GLMNET)
+
+suppressWarnings(
+  compare_results(models)
+)
+
+
+```
+
+Seems like GLM net produces the lowest errors.
+
