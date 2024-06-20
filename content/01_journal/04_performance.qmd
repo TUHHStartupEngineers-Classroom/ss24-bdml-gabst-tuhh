@@ -1,8 +1,17 @@
 ---
-title: "Data Visualization"
-author: "Joschka Schwarz"
+title: "Performance Measures"
+date: "06/16/2024"
+author: "Gabriel Storch"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        highlight: tango
+        code_folding: hide
+        df_print: paged
+editor: 
+  markdown: 
+    wrap: 72
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+See Automated ML

@@ -15,23 +15,21 @@ editor:
 ---
 
 ```{r}
-# Standard
+
 library(tidyverse)
 
-# Modeling
 library(parsnip)
 
-# Preprocessing & Sampling
 library(recipes)
 library(rsample)
 
-# Modeling Error Metrics
+
 library(yardstick)
 
-# Plotting Decision Trees
+
 library(rpart.plot)
 library(workflows)
-library(parsnip)
+
 ```
 
 
